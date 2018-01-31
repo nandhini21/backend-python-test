@@ -1,8 +1,9 @@
 from flask import Flask, g
 import sqlite3
+import os
 
 # configuration
-DATABASE = '/tmp/alayatodo.db'
+DATABASE = os.path.join('tmp','alayatodo.db')
 DEBUG = True
 SECRET_KEY = 'development key'
 USERNAME = 'admin'

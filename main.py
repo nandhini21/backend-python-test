@@ -3,6 +3,7 @@
 Usage:
   main.py [run]
   main.py initdb
+  main.py completed
 """
 from docopt import docopt
 import subprocess
@@ -20,7 +21,6 @@ def _run_sql(filename):
         )
     except subprocess.CalledProcessError, ex:
         print ex.output
-        os.exit(1)
 
 
 if __name__ == '__main__':
@@ -29,5 +29,9 @@ if __name__ == '__main__':
         _run_sql('resources/database.sql')
         _run_sql('resources/fixtures.sql')
         print "AlayaTodo: Database initialized."
+    ##Perform a migration if completed keyowrd is used
+    if args['completed']:
+        _run_sql('resources/completed.sql')
+        print "AlayaTodo: Database migration done!."
     else:
         app.run(use_reloader=True)
