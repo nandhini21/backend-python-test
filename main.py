@@ -29,7 +29,7 @@ if __name__ == '__main__':
         _run_sql('resources/database.sql')
         _run_sql('resources/fixtures.sql')
         print "AlayaTodo: Database initialized."
-    ##Perform a migration if completed keyowrd is used
+    ##Perform a migration if completed keyword is used
     if args['completed']:
         _run_sql('resources/completed.sql')
         print "AlayaTodo: Database migration done!."

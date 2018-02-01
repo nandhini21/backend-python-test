@@ -55,18 +55,21 @@ def todo(id):
 
 
 @app.route('/todo', methods=['GET'])
-@app.route('/todo/', methods=['GET'])
 def todos():
     if not session.get('logged_in'):
         return redirect('/login')
-    cur = g.db.execute("SELECT * FROM todos")
+    page = request.args.get('page',1)
+    cur = g.db.execute("SELECT * FROM todos WHERE user_id = {}".format(session['user']['id']))
     todos = cur.fetchall()
-    pages = [i for i in range(1,len(todos)/4+1)]
+    ##Get the total number of pages, and create an array for pagination
+	pages = [i for i in range(1,len(todos)/4+1+(0 if len(todos)%4 ==0 else 1))]
+    ##Select the todos for the requested page
+	cur = g.db.execute("SELECT * FROM todos WHERE user_id ={} LIMIT 4 OFFSET {}".format(session['user']['id'],(int(page)-1)*4))
+    todos = cur.fetchall()
     return render_template('todos.html', todos=todos,pages = pages)
 
 
 @app.route('/todo', methods=['POST'])
-@app.route('/todo/', methods=['POST'])
 def todos_POST():
     if not session.get('logged_in'):
         return redirect('/login')

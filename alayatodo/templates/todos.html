@@ -53,7 +53,7 @@ function completed(checkboxElem,id) {
         </tr>
         <ul class="pagination pagination-lg">
           {% for page in pages %}
-            <li><a href="#">{{page}}</a></li>
+            <li><a href="/todo?page={{page}}">{{page}}</a></li>
           {% endfor %}
 </ul>
     </table>
