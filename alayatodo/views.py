@@ -8,7 +8,9 @@ from flask import (
     session,
     url_for
     )
-
+##Import the models from __init__
+from __init__ import users,db
+from __init__ import todos as _todos
 
 @app.route('/')
 def home():
@@ -26,13 +28,16 @@ def login():
 def login_POST():
     username = request.form.get('username')
     password = request.form.get('password')
-	
-    ##select rows
-    sql = "SELECT * FROM users WHERE username = '%s' AND password = '%s'";
-    cur = g.db.execute(sql % (username, password))
-    user = cur.fetchone()
+
+    ##Use SQLALCHEMY to select rows
+    user = users.query.filter_by(username = username).filter_by(password = password).first()
     if user:
-        session['user'] = dict(user)
+        session['user'] = {
+            'username'  : username,
+            'password'  : password,
+            'id'        : user.id
+
+            }
         session['logged_in'] = True
         return redirect('/todo')
 
@@ -48,24 +53,22 @@ def logout():
 
 @app.route('/todo/<id>', methods=['GET'])
 def todo(id):
-    ##select rows
-    cur = g.db.execute("SELECT * FROM todos WHERE id ='%s'" % id)
-    todo = cur.fetchone()
-    return render_template('todo.html', todo=todo)
+    ##Use SQLALCHEMY to select rows
+    cur = _todos.query.filter_by(id = int(id)).first()
+    return render_template('todo.html', todo=cur)
 
 
 @app.route('/todo', methods=['GET'])
 def todos():
     if not session.get('logged_in'):
         return redirect('/login')
-    page = request.args.get('page',1)
-    cur = g.db.execute("SELECT * FROM todos WHERE user_id = {}".format(session['user']['id']))
-    todos = cur.fetchall()
+    page = int(request.args.get('page',1))
+    ##Use SQLALCHEMY to select rows
+    todos = _todos.query.filter_by(user_id = session['user']['id']).all()
     ##Get the total number of pages, and create an array for pagination
-	pages = [i for i in range(1,len(todos)/4+1+(0 if len(todos)%4 ==0 else 1))]
+    pages = [i for i in range(1,len(todos)/4+1+(0 if len(todos)%4 ==0 else 1))]
     ##Select the todos for the requested page
-	cur = g.db.execute("SELECT * FROM todos WHERE user_id ={} LIMIT 4 OFFSET {}".format(session['user']['id'],(int(page)-1)*4))
-    todos = cur.fetchall()
+    todos = todos[(page-1)*4:page*4]
     return render_template('todos.html', todos=todos,pages = pages)
 
 
@@ -77,12 +80,12 @@ def todos_POST():
     ##A todo must have a description
     if not request.form.get('description', False) :
         return redirect('/description')
-
-    g.db.execute(
-        "INSERT INTO todos (user_id, description) VALUES ('%s', '%s')"
-        % (session['user']['id'], request.form.get('description', ''))
-    )
-    g.db.commit()
+    td = _todos(
+        user_id = session['user']['id'],
+        description = request.form.get('description', '')
+        )
+    db.session.add(td)
+    db.session.commit()
     return redirect('/todo')
 
 
@@ -90,8 +93,9 @@ def todos_POST():
 def todo_delete(id):
     if not session.get('logged_in'):
         return redirect('/login')
-    g.db.execute("DELETE FROM todos WHERE id ='%s'" % id)
-    g.db.commit()
+    cur = _todos.query.filter_by(id = int(id)).first()
+    db.session.delete(cur)
+    db.session.commit()
     return redirect('/todo')
 
 
@@ -102,24 +106,19 @@ def description():
 
 @app.route('/todojson/<id>', methods=['GET'])
 def todojson(id):
-    cur = g.db.execute("SELECT * FROM todos WHERE id ='%s'" % id)
-    todo = cur.fetchone()
-    _todo = {
+    cur = _todos.query.filter_by(id = int(id)).first()
+    __todo = {
         'id' : id,
-        'description' : todo['description'],
-        'user_id'     : todo['user_id']
+        'description' : cur.description,
+        'user_id'     : cur.user_id
     }
-    return json.dumps(_todo)
+    return json.dumps(__todo)
 
 @app.route('/completed', methods=['POST'])
 @app.route('/completed/', methods=['POST'])
 def completed():
-    sql = '''
-        UPDATE todos SET completed = {} WHERE id = {}
-    '''.format(
-        0 if request.form.get('completed', 'False') == 'False' else 1,
-        request.form.get('id', '0')
-    )
-    g.db.execute(sql)
-    g.db.commit()
+    cur = _todos.query.filter_by(id = int(request.form.get('id', '0'))).first()
+    cur.completed = request.form.get('completed', 'False') == 'True'
+
+    db.session.commit()
     return 'Done!'

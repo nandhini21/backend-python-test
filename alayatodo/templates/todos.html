@@ -27,7 +27,7 @@ function completed(checkboxElem,id) {
                     </a>
                 </td>
                 <td>
-                    <label class="checkbox-inline"><input type="checkbox" {{ 'checked' if todo.completed == 1 else ''}} onchange="completed(this,{{todo.id }})">Completed</label>
+                    <label class="checkbox-inline"><input type="checkbox" {{ 'checked' if todo.completed == 1 else ''}} onchange="completed(this,{{todo.id }})"></label>
                 </td>
                 <td>
                     <a href="{{ url_for('todojson', id=todo.id) }}">
