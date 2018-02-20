@@ -6,11 +6,31 @@ from flask import (
     render_template,
     request,
     session,
-    url_for
+    url_for,
+    jsonify
     )
-##Import the models from __init__
-from __init__ import users,db
-from __init__ import todos as _todos
+##Import SQL Alchemy in order to create the ORM access layer
+from flask_sqlalchemy import SQLAlchemy
+
+##Set the path to the database for SQLALCHEMY
+##This is recomended by SQLAlchemy in their documentation (http://flask-sqlalchemy.pocoo.org/2.3/quickstart/#a-minimal-application)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///../tmp/alayatodo.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
+##Create the database session
+db = SQLAlchemy(app)
+
+##Create the users model
+class Users(db.Model):
+   id = db.Column(db.Integer, primary_key = True)
+   username = db.Column(db.String(100),unique=True)
+   password = db.Column(db.String(100))
+
+##Create the todos model
+class Todos(db.Model):
+    id = db.Column(db.Integer, primary_key = True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    description = db.Column(db.String(100), nullable=False)
+    completed = db.Column(db.Boolean,default= False)
 
 @app.route('/')
 def home():
@@ -30,7 +50,8 @@ def login_POST():
     password = request.form.get('password')
 
     ##Use SQLALCHEMY to select rows
-    user = users.query.filter_by(username = username).filter_by(password = password).first()
+    ##We can't flitet just by the username, or anyone can get access
+    user = Users.query.filter_by(username = username,password = password).first()
     if user:
         session['user'] = {
             'username'  : username,
@@ -54,7 +75,7 @@ def logout():
 @app.route('/todo/<id>', methods=['GET'])
 def todo(id):
     ##Use SQLALCHEMY to select rows
-    cur = _todos.query.filter_by(id = int(id)).first()
+    cur = Todos.query.filter_by(id = int(id),user_id = session['user']['id']).first()
     return render_template('todo.html', todo=cur)
 
 
@@ -64,12 +85,15 @@ def todos():
         return redirect('/login')
     page = int(request.args.get('page',1))
     ##Use SQLALCHEMY to select rows
-    todos = _todos.query.filter_by(user_id = session['user']['id']).all()
+    ##Get the umber fo rows to generate pagination, this is the only way without having to execute some sql code
+    rows = len(Todos.query.filter_by(user_id=session['user']['id']).all())
+    page_size = 4
     ##Get the total number of pages, and create an array for pagination
-    pages = [i for i in range(1,len(todos)/4+1+(0 if len(todos)%4 ==0 else 1))]
-    ##Select the todos for the requested page
-    todos = todos[(page-1)*4:page*4]
-    return render_template('todos.html', todos=todos,pages = pages)
+    pages = [i for i in range(1,rows/page_size+1+(0 if rows%page_size ==0 else 1))]
+
+    ##Select the Todos for the requested page
+    _todos = Todos.query.filter_by(user_id=session['user']['id']).offset((page-1)*page_size).limit(page_size)
+    return render_template('todos.html', todos=_todos,pages = pages)
 
 
 @app.route('/todo', methods=['POST'])
@@ -78,22 +102,23 @@ def todos_POST():
         return redirect('/login')
 
     ##A todo must have a description
-    if not request.form.get('description', False) :
+    if not request.form.get('description') :
         return redirect('/description')
-    td = _todos(
+    td = Todos(
         user_id = session['user']['id'],
-        description = request.form.get('description', '')
+        description = request.form.get('description')
         )
     db.session.add(td)
     db.session.commit()
     return redirect('/todo')
 
 
-@app.route('/todo/<id>', methods=['POST'])
+##Actually it is <int:id>(<converter:param>)
+@app.route('/todo/<int:id>', methods=['POST'])
 def todo_delete(id):
     if not session.get('logged_in'):
         return redirect('/login')
-    cur = _todos.query.filter_by(id = int(id)).first()
+    cur = Todos.query.filter_by(id = id,user_id=session['user']['id']).first()
     db.session.delete(cur)
     db.session.commit()
     return redirect('/todo')
@@ -106,19 +131,18 @@ def description():
 
 @app.route('/todojson/<id>', methods=['GET'])
 def todojson(id):
-    cur = _todos.query.filter_by(id = int(id)).first()
-    __todo = {
+    cur = Todos.query.filter_by(id = int(id),user_id=session['user']['id']).first()
+    _todo = {
         'id' : id,
         'description' : cur.description,
         'user_id'     : cur.user_id
     }
-    return json.dumps(__todo)
+    return jsonify(_todo)
 
 @app.route('/completed', methods=['POST'])
 @app.route('/completed/', methods=['POST'])
 def completed():
-    cur = _todos.query.filter_by(id = int(request.form.get('id', '0'))).first()
+    cur = Todos.query.filter_by(id = int(request.form.get('id', '0')),user_id=session['user']['id']).first()
     cur.completed = request.form.get('completed', 'False') == 'True'
-
     db.session.commit()
     return 'Done!'

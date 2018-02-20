@@ -1,11 +1,10 @@
 from flask import Flask, g
 import sqlite3
 import os
-##Import SQL Alchemy in order to create the ORM access layer
-from flask_sqlalchemy import SQLAlchemy
 
 # configuration
 ##Use python os functions to create a path for cross platform usability
+##I don't think we do need to cerate a temp file here, i just used this so the code can still run in both windows and linux(due to the \ / issue)
 DATABASE = os.path.join('tmp','alayatodo.db')
 DEBUG = True
 SECRET_KEY = 'development key'
@@ -15,23 +14,9 @@ PASSWORD = 'default'
 
 app = Flask(__name__)
 app.config.from_object(__name__)
-##Set the path to the database for SQLALCHEMY
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///../tmp/alayatodo.db'
-##Create the database session
-db = SQLAlchemy(app)
 
-##Create the users model
-class users(db.Model):
-   id = db.Column(db.Integer, primary_key = True)
-   username = db.Column(db.String(100))
-   password = db.Column(db.String(100))
-
-##Create the todos model
-class todos(db.Model):
-    id = db.Column(db.Integer, primary_key = True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    description = db.Column(db.String(100))
-    completed = db.Column(db.Boolean)
+#This must be called after the app is created, otherwise you can't import app from views
+import views
 
 ##These functions are not needed, access to the db is handled by SQLAlchemy
 #def connect_db():
@@ -50,6 +35,3 @@ class todos(db.Model):
 #    db = getattr(g, 'db', None)
 #    if db is not None:
 #        db.close()
-
-
-import alayatodo.views

@@ -1,61 +1,88 @@
-{% extends "layout.html" %}
-
-{% block content %}
+{% extends "layout.html" %} {% block content %}
 <script>
-function completed(checkboxElem,id) {
-  var xhttp = new XMLHttpRequest();
-  xhttp.open("POST", "/completed/", true);
-  xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-  if (checkboxElem.checked) {
-    xhttp.send("completed=True&id="+id);
-  } else {
-    xhttp.send("completed=False&id="+id);
+  function completed(checkboxElem, _id) {
+    if (checkboxElem.checked) {
+      var data_ = new FormData();
+        data_.append('completed', 'True');
+        data_.append('id', _id);
+      fetch('/completed/', {
+          method: 'POST',
+           credentials: 'include',
+          body: data_
+        })
+        .then(function(data) {
+          console.log('Request success: ', data);
+        })
+        .catch(function(error) {
+          console.log('Request failure: ', error);
+        });
+    } else {
+      var data_ = new FormData();
+        data_.append('completed', 'False');
+        data_.append('id', _id);
+
+      fetch('/completed/', {
+          method: 'POST',
+           credentials: 'include',
+          body: data_
+        })
+        .then(function(data) {
+          console.log('Request success: ', data);
+        })
+        .catch(function(error) {
+          console.log('Request failure: ', error);
+        });
+    }
   }
-}
 </script>
 <div class="col-md-4 col-md-offset-4">
-    <h1>Todo List:</h1>
-    <table class="table table-striped">
-        <th>#</th><th>User</th><th>Description</th><th>Completed</th><th>JSON</th><th></th>
-        {% for todo in todos %}
-            <tr>
-                <td>{{ todo.id }}</td>
-                <td>{{ todo.user_id }}</td>
-                <td>
-                    <a href="{{ url_for('todo', id=todo.id) }}">
+  <h1>Todo List:</h1>
+  <table class="table table-striped">
+    <th>#</th>
+    <th>User</th>
+    <th>Description</th>
+    <th>Completed</th>
+    <th>JSON</th>
+    <th></th>
+    {% for todo in todos %}
+    <tr>
+      <td>{{ todo.id }}</td>
+      <td>{{ todo.user_id }}</td>
+      <td>
+        <a href="{{ url_for('todo', id=todo.id) }}">
                        {{ todo.description }}
                     </a>
-                </td>
-                <td>
-                    <label class="checkbox-inline"><input type="checkbox" {{ 'checked' if todo.completed == 1 else ''}} onchange="completed(this,{{todo.id }})"></label>
-                </td>
-                <td>
-                    <a href="{{ url_for('todojson', id=todo.id) }}">
+      </td>
+      <td>
+        <label class="checkbox-inline"><input type="checkbox" {{ 'checked' if todo.completed == 1 else ''}} onchange="completed(this,{{todo.id }})"></label>
+      </td>
+      <td>
+        <a href="{{ url_for('todojson', id=todo.id) }}">
                        JSON
                     </a>
-                </td>
-                <td>
-                    <form method="post" action="{{ url_for('todo_delete', id=todo.id) }}">
-                        <button type="submit" class="btn btn-xs btn-danger" onclick="return confirm('Are you sure you want to delete this item?');"><span class="glyphicon glyphicon-remove glyphicon-white"></span></button>
-                    </form>
-                </td>
-            </tr>
-        {% endfor %}
-        <tr>
-            <form method="post" action="{{ url_for('todos_POST') }}">
-                <td colspan="3">
-                    <input type="textbox" name="description" class="small-6 small-center" placeholder="Description...">
-                </td>
-                <td>
-                    <button type="submit" class="btn btn-sm btn-primary" onclick="return confirm('Are you sure you want to add this item?');">Add</button>
-                </td>
-            </form>
-        </tr>
-        <ul class="pagination pagination-lg">
-          {% for page in pages %}
-            <li><a href="/todo?page={{page}}">{{page}}</a></li>
-          {% endfor %}
-</ul>
-    </table>
+      </td>
+      <td>
+        <form method="post" action="{{ url_for('todo_delete', id=todo.id) }}">
+          <button type="submit" class="btn btn-xs btn-danger" onclick="return confirm('Are you sure you want to delete this item?');"><span class="glyphicon glyphicon-remove glyphicon-white"></span></button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+    <tr>
+      <form method="post" action="{{ url_for('todos_POST') }}">
+        <td colspan="3">
+          <input type="textbox" name="description" class="small-6 small-center" placeholder="Description...">
+        </td>
+        <td>
+          <button type="submit" class="btn btn-sm btn-primary" onclick="return confirm('Are you sure you want to add this item?');">Add</button>
+        </td>
+      </form>
+    </tr>
+    <ul class="pagination pagination-lg">
+      {% for page in pages %}
+      <li><a href="/todo?page={{page}}">{{page}}</a></li>
+      {% endfor %}
+    </ul>
+  </table>
 </div>
 {% endblock %}
